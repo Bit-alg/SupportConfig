@@ -1,6 +1,7 @@
 from dataset import load_dataset
 from dataset import process_dataset
 import math
+import numpy as np
 
 #コンフィグのステートメント
 load_text = []
@@ -10,12 +11,8 @@ config_statement = []
 pos_len = {}
 word_pos_len = {}
 
-#スコアと単語を対応させる
-word_to_score = {}
-
-config_score = []
-cluster_labels = []
 config_template = []
+
 
 def count(config_statement):
     #config_statementを空白ごとに分割してループを回して数を数える
@@ -44,6 +41,7 @@ def count(config_statement):
 def score(str_list):
     length = len(str_list)
     position = 0
+    config_score = []
 
     for s in str_list:
         position = position + 1
@@ -68,7 +66,7 @@ def dbscan(config_score, ganma):
             temp_score = score
             continue
 
-        if score - temp_score >= ganma:
+        if abs(score - temp_score) >= ganma:
             label = label + 1
 
         cluster_labels.append(label)
@@ -92,33 +90,61 @@ def ratio_statement(config_score, cluster_label, beta):
 
 def extract_templates(config_statement):
     count(config_statement)
-    temp = []
+    flag = 0
 
     for row in config_statement:
+        config = []
         for str_list in row:
+            if flag == 1:
+                break
             #configスコアとクラスターラベルの初期化をする.
             config_score = []
             cluster_labels = []
             
             #各config文のスコア化をする
             config_score = score(str_list)
+            
+            #コンフィグスコアの重複をなくす
+            i = len(config_score)
+            j = 0
+            for s in config_score:
+                config_score[j] = float(str(s)+str(i))
+                i = i - 1
+                j = j + 1
 
-            #スコアと単語を1対1で対応づけておく
+            #並べ替えた後の添字を入手する
+            np_config_score = np.array(config_score)
+            index = np.argsort(np_config_score)
+            index = index[::-1]
 
             #スコアを降順にソートする
             config_score.sort(reverse=True)
 
-            cluster_labels = dbscan(config_score, 10)
 
-            temp.append(ratio_statement(config_score, cluster_labels, 0.4))
+            cluster_labels = dbscan(config_score, 0.015)
+
+            temp = ratio_statement(config_score, cluster_labels, 0.4)
+
+            k = 0
+            word = ""
+            #β%分のコンフィグを入手
+            for c in temp:
+                word = word  +" "+ str_list[index[k]] 
+                k = k + 1
+            
+            config.append(word)
 
             #part_configをfor文で回して各スコアを単語に戻す.
-        config_template.append(temp)
-    
+        config_template.append(config)
+    return config_template
+
+def plot_evaluation(config_template):
+    print("コンフィグのテンプレート化の評価をする")
             
 load_text = load_dataset()
 config_statement = process_dataset(load_text)
 
-extract_templates(config_statement)
+config_template = extract_templates(config_statement)
+print(config_template)
 
 
