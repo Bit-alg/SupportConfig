@@ -3,14 +3,17 @@ from dataset import process_dataset
 import math
 import numpy as np
 
-#コンフィグのステートメント
+#テキストファイルをもとに読み込んだコンフィグ
 load_text = []
+
+#コメントなど余分な要素を取り除いたコンフィグ
 config_statement = []
 
 #条件付き確率を求める際に頻度を数えるために使う(dict型)
 pos_len = {}
 word_pos_len = {}
 
+#コンフィグのテンプレート
 config_template = []
 
 
@@ -88,15 +91,13 @@ def ratio_statement(config_score, cluster_label, beta):
 
     return part_config
 
-def extract_templates(config_statement):
+def extract_templates(config_statement, beta, ganma):
+    #単語の頻度をカウントする
     count(config_statement)
-    flag = 0
 
     for row in config_statement:
         config = []
         for str_list in row:
-            if flag == 1:
-                break
             #configスコアとクラスターラベルの初期化をする.
             config_score = []
             cluster_labels = []
@@ -120,22 +121,25 @@ def extract_templates(config_statement):
             #スコアを降順にソートする
             config_score.sort(reverse=True)
 
+            #クラスターのラベルを取得する
+            cluster_labels = dbscan(config_score, ganma)
 
-            cluster_labels = dbscan(config_score, 0.015)
+            #コンフィグスコア配列のβ%の取得
+            temp = ratio_statement(config_score, cluster_labels, beta)
 
-            temp = ratio_statement(config_score, cluster_labels, 0.4)
-
+            #β%分のコンフィグを入手
             k = 0
             word = ""
-            #β%分のコンフィグを入手
             for c in temp:
                 word = word  +" "+ str_list[index[k]] 
                 k = k + 1
-            
+
+            #コンフィグを配列に保存
             config.append(word)
 
-            #part_configをfor文で回して各スコアを単語に戻す.
+        #各テキストファイルのコンフィグを配列に追加
         config_template.append(config)
+        
     return config_template
 
 def plot_evaluation(config_template):
@@ -144,7 +148,7 @@ def plot_evaluation(config_template):
 load_text = load_dataset()
 config_statement = process_dataset(load_text)
 
-config_template = extract_templates(config_statement)
+config_template = extract_templates(config_statement, 0.4, 0.15)
 print(config_template)
 
 
