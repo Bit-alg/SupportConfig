@@ -2,7 +2,7 @@ from dataset import load_dataset
 from dataset import process_dataset_ver2
 import re
 
-#テキストファイルを元に読み込んだコンフィグ
+#テキストファイルを基に読み込んだコンフィグ
 load_text = []
 
 #コメントなど余分な要素を取り除いたコンフィグ
@@ -15,9 +15,10 @@ config_template = []
 #具体的はパラメータなどを種類毎に共通の文字列に置き換える
 #そのことで一意なメッセージが出現しやすくなる
 def extract_templates(config_statements):
-    ex_config_word = []
-    ex_config_statement = []
+    config_template = []
+    config_templates= []
     for config_statement in config_statements:
+        config_template  = []
         for config_word in config_statement:
             
             #IPアドレスに該当する文字列は共通して<IP>と表記する
@@ -51,18 +52,9 @@ def extract_templates(config_statements):
 
             #bgpのset communityの変数は共通して<Num>:<Num>と表記する
             config_word = re.sub(r'\d+:\d+', '<Num>:<Num>',config_word)
+            config_template.append(config_word)
+        config_templates.append(config_template)
             
 
-            ex_config_word.append(config_word)
-        ex_config_statement.append(ex_config_word)
-    return ex_config_statement
-
-#テストモジュール
-load_text = load_dataset()
-config_statement = process_dataset_ver2(load_text)
-
-
-config_template = extract_templates(config_statement)
-print(config_template)
-
+    return config_templates
 

@@ -2,6 +2,7 @@ from dataset import load_dataset
 from dataset import process_dataset
 import math
 import numpy as np
+import matplotlib.pyplot as plt
 
 #テキストファイルをもとに読み込んだコンフィグ
 load_text = []
@@ -16,7 +17,7 @@ word_pos_len = {}
 #コンフィグのテンプレート
 config_template = []
 
-
+#単語の頻度を求める
 def count(config_statement):
     #config_statementを空白ごとに分割してループを回して数を数える
     for row in config_statement:
@@ -40,7 +41,7 @@ def count(config_statement):
                 else:
                     pos_len[pl_key] = 1
     
-#各config文のスコアを算出する(listを返す)
+#各config文のスコアを算出する
 def score(str_list):
     length = len(str_list)
     position = 0
@@ -58,22 +59,36 @@ def calc_score(word, position, length):
     pl = float(pos_len.get(str(position) + str(length)))
     return wpl/pl
 
-# betaとganmaはdbscanの閾値.
+# スコアのクラスタリングをする
+# 閾値γを用意してクラスタ間の距離がγ(>=0)であるようにクラスタを分ける
 def dbscan(config_score, ganma):
     cluster_labels = []
     label = 0
+    n = 0
+    summantion = 0
+    flag = False
 
     for score in config_score:
+
+        summantion = summantion + score
+        n = n + 1
+
+        # クラスタ間の閾値がγ以上の場合次の単語を新しいクラスター群として定める
+        if(flag):
+            label = label + 1
+            flag = False
+        
+        #一つもクラスターがない時
         if not cluster_labels:
             cluster_labels.append(label)
-            temp_score = score
             continue
 
-        if abs(score - temp_score) >= ganma:
-            label = label + 1
+        if abs(summantion/n - score) >= ganma:
+            flag = True
+            summantion = 0
+            n = 0
 
         cluster_labels.append(label)
-        temp_score = score
     
     return cluster_labels
 
@@ -142,13 +157,42 @@ def extract_templates(config_statement, beta, ganma):
         
     return config_template
 
-def plot_evaluation(config_template):
-    print("コンフィグのテンプレート化の評価をする")
+def plot_evaluation(config_statement):
+    #テンプレートに失敗した単語数
+    data_y = []
+    #パラメータΓの範囲
+    data_x = []
+    temp = []
+
+    for i in range(2,6,1):
+        beta = i * 0.1
+
+        for j in range(5,0,-1):
+            count = 0
+            ganma = pow(10, -i)
+            data_x.append(ganma)
+            config_templates = extract_templates(config_statement, beta, ganma)
+
+            for config_template in config_templates:
+                for word_list in config_template:
+                    for word in word_list:
+                        if word.isdigit():
+                            count = count + 1
+            temp.append(count)
+        data_y.append(temp)
+
+    plt.plot(data_x, data_y[2], color = 'red')
+    plt.plot(data_x, data_y[3], color = 'blue')
+
+    plt.show()
+
+                    
             
 load_text = load_dataset()
 config_statement = process_dataset(load_text)
+#plot_evaluation(config_statement)
 
-config_template = extract_templates(config_statement, 0.4, 0.15)
+config_template = extract_templates(config_statement, 0.4, 0.0015)
 print(config_template)
 
 
