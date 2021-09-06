@@ -5,6 +5,7 @@ import math
 import pandas as pd
 from itertools import islice
 from sklearn.decomposition import NMF
+import matplotlib.pyplot as plt
 
 #テキストファイルを基に読み込んだコンフィグ
 load_text = []
@@ -229,6 +230,11 @@ def template_grouping(config_templates, n_comp, version ):
 
     return H
 
+def evaluate_result(H):
+    H.plot(subplots = True)
+
+    plt.show()
+
 
 #テストモジュール
 load_text = load_dataset()
@@ -239,4 +245,5 @@ config_template = extract_templates(config_statement)
 
 H = template_grouping(config_template, 15,2)
 H.to_csv('output_ver4.csv')
+evaluate_result(H)
 
