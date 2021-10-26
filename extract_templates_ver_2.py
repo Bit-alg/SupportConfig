@@ -20,15 +20,6 @@ def extract_templates(config_statements):
     for config_statement in config_statements:
         config_template  = []
         for config_word in config_statement:
-            
-            #IPアドレスに該当する文字列は共通して<IP>と表記する
-            config_word = re.sub(r'\d+.\d+.\d+.\d+', '<IP address>', config_word)
-
-
-            #インタフェースに該当する文字列は共通して<Interface>と表記する
-            config_word = re.sub(r'([A-Z]|[a-z])+\d+/\d+', '<Interface>', config_word)
-            #プリフィックスに該当する文字列は共通して/<Prefix>と表記する
-            config_word = re.sub(r'/\d+', '/<Prefix>', config_word)
 
              #数字のみの単語は共通して<Int>と表記する
             config_word = config_word.split()
@@ -37,24 +28,43 @@ def extract_templates(config_statements):
             i = 0
             for word in config_word:
                 if word.isdigit():
-                    config_word[i] = '<Num>'
+                    config_word[i] = '*'
                 if word == 'route-map':
-                    config_word[i+1] = '<Map-tag>'
+                    config_word[i+1] = '*'
                 if word == 'hostname':
-                    config_word[i+1] = '<Hostname>'
+                    config_word[i+1] = '*'
                 if word == 'name':
-                    config_word[i+1] = '<Name>'
+                    config_word[i+1] = '*'
+                if word == 'neighbor':
+                    config_word[i+1] = '*'
+                if word == 'peer-group':
+                    if i != len(config_word) -1:
+                        config_word[i+1] = '*'
+                if word == 'Interface' or  word == 'interface':
+                    config_word[i+1] = '*'
+                if word == 'pid':
+                    config_word[i+1] = '*'
+                if word == 'sn':
+                    config_word[i+1] = '*'
                 i = i + 1
             config_word = ' '.join(config_word)
+            
+            #IPアドレスに該当する文字列は共通して<IP>と表記する
+            config_word = re.sub(r'\d+.\d+.\d+.\d+', '*', config_word)
 
-            #as numberは共通して<IP address>と表記する
-            config_word = re.sub(r'(as|As)\d+', '<IP address>', config_word)
+            #プリフィックスに該当する文字列は共通して/<Prefix>と表記する
+            config_word = re.sub(r'/\d+', '/*', config_word)
 
             #bgpのset communityの変数は共通して<Num>:<Num>と表記する
-            config_word = re.sub(r'\d+:\d+', '<Num>:<Num>',config_word)
+            config_word = re.sub(r'\d+:\d+', '*',config_word)
+            
             config_template.append(config_word)
         config_templates.append(config_template)
+
+
             
 
     return config_templates
+
+
 
