@@ -23,6 +23,7 @@ def process_dataset(config_statement):
     
     #\n, !, version, 先頭にno(コンフィグの設定が有効化してないもの)などを空文字に変換する
     for row in config_statement:
+        str_list = []
         for str in row:
             str = str.replace('!','').replace('\n','').replace('end','').strip()
             if(str.find('version')>=0):
@@ -42,6 +43,7 @@ def process_dataset(config_statement):
                 break
 
     for row in processed_config:
+        new_str_list = []
         for str in row:
             str = str.split()
             new_str_list.append(str)
@@ -56,14 +58,12 @@ def process_dataset_ver2(config_statement):
     new_str_list = []
     new_processed_config =[]
     
-    #\n, !, version, 先頭にno(コンフィグの設定が有効化してないもの)などを空文字に変換する
+    #\n, !, version, などを空文字に変換する
     for row in config_statement:
         str_list  = []
         for str in row:
             str = str.replace('!','').replace('\n','').replace('end','').strip()
             if(str.find('version')>=0):
-                str = str.replace(str,'')
-            if(str.find('no')>=0):
                 str = str.replace(str,'')
             str_list.append(str)
         processed_config.append(str_list)
@@ -79,6 +79,4 @@ def process_dataset_ver2(config_statement):
 
             
     return processed_config
-
-
 
