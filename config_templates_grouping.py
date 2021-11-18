@@ -47,12 +47,7 @@ def create_input_matrix_ver1(config_templates, frame_num):
                 
             count = count + 1
 
-            #dictionaryのkeyに同じテンプレートが存在する場合
-            if word in temp[i]:
-                temp[i][word] = temp[i][word] + 1
-                continue
-
-            #dictionaryのkeyに存在しないテンプレートの場合
+            #フレーム内にテンプレートが含まれている場合ビットを立たせる.
             temp[i][word] = 1
             
     #dictionaryからPandasFrameを作成(ここからやる)
@@ -72,11 +67,14 @@ def create_input_matrix_ver1(config_templates, frame_num):
 
 def get_template_list(config_templates):
     template_list = []
+    count = 0
     for config_template in config_templates:
         for word in config_template:
             if word not in template_list:
                 template_list.append(word)
+                count = count + 1
 
+    print(count)
     return template_list
         
 
@@ -116,8 +114,8 @@ def tucker_input_matrix(config_templates, frame_num):
 
             word_count = word_count  + 1
 
-            #該当するテンプレートの個数を+1する.
-            count_template[template_list.index(word)] = count_template[template_list.index(word)] + 1
+            #フレーム内に含まれるテンプレートのビットを立てる.
+            count_template[template_list.index(word)] = 1
             
             #フレームが切り替わる時の処理
             if count == num_per_frame and flag_remin:
@@ -151,7 +149,7 @@ def tucker_input_matrix(config_templates, frame_num):
 def template_grouping(config_templates, n_comp, version ):
 
     #分割するフレーム数
-    frame_num = 20
+    frame_num = 15
     X = create_input_matrix_ver1(config_templates, frame_num)
 
     columns = X.columns.values
@@ -172,6 +170,15 @@ load_text = load_dataset()
 config_statement = process_dataset_ver2(load_text)
 
 config_template = extract_templates(config_statement)
+
+count = 0
+
+for i in config_template:
+    for word in i:
+        count = count + 1
+
+
+print(count)
 
 
 #----------------------テストモジュール(NMFとTucker分解の実行)----------------------
