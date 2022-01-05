@@ -1,10 +1,10 @@
 from glob import glob
 
 # 指定したディレクトリ内のテキストを読みこむ
-def load_dataset():
+def load_dataset(path):
     config_statement = []
     
-    for file in glob('Dataset/*.txt'):
+    for file in glob(path + '/*.txt'):
         print(file)
         with open(file, 'r') as f:
             datalist = f.readlines()
@@ -12,7 +12,7 @@ def load_dataset():
 
     return config_statement
 
-def process_dataset_ver2(config_statement):
+def process_dataset(config_statement):
      # 前処理が完了した状態のステートメント
     str_list = []
     processed_config = []

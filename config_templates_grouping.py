@@ -1,25 +1,14 @@
-from dataset import load_dataset
-from dataset import process_dataset_ver2
-from extract_templates_ver_2 import extract_templates
 import math
 import pandas as pd
-from itertools import islice
 from sklearn.decomposition import NMF
-import matplotlib.pyplot as plt
 from tensorly.decomposition import tucker
 import numpy as np
 
-#テキストファイルを基に読み込んだコンフィグ
-load_text = []
+# タッカー分解を利用するためのネットワークコンフィグを変換する際に使用するテンプレートリスト
+template_list = []
 
-#コメントなど余分な要素を取り除いたコンフィグ
-config_statement = []
-
-#コンフィグのテンプレート
-config_template = []
-
-#各コンフィグファイルごとに適当なフレーム数に分割して考える(pattern 1)
-def create_input_matrix_ver1(config_templates, frame_num):
+# NMFの入力形式に合わせたネットワークコンフィグの変換をする.
+def NMF_input_matrix(config_templates, frame_num):
     pdFramelist = []
     #各indexごとに各フレームのテンプレートとその頻度のdictionaryを格納する
     temp = []
@@ -34,7 +23,7 @@ def create_input_matrix_ver1(config_templates, frame_num):
         count = 1
         #1フレームごとの行数
         num_per_frame = math.floor(len(config_template)/frame_num)
-
+        
         #tempのindex
         i = 0
         for word in config_template:
@@ -61,37 +50,38 @@ def create_input_matrix_ver1(config_templates, frame_num):
 
     # Nanを0に置き換える
     pdFrame = pdFrame.fillna(0)
-        
+
+    pdFrame = pdFrame.where(pdFrame == 0, 1)
+           
     return pdFrame
 
 
+# テンプレートのリストの取得をする.
 def get_template_list(config_templates):
+    # テンプレートリストの初期化
     template_list = []
-    count = 0
+
+    # テンプレートの数をカウントする
     for config_template in config_templates:
         for word in config_template:
             if word not in template_list:
                 template_list.append(word)
-                count = count + 1
 
-    print(count)
     return template_list
         
 
-# Tucker分解で用いる
+# Tucker分解の入力形式に合わせたネットワークコンフィグの変換をする.
 def tucker_input_matrix(config_templates, frame_num):
 
-    #ネットワークコンフィグの全テンプレートが保存されたリストの取得
+    # ネットワークコンフィグの全テンプレートが保存されたリストの取得
     template_list = get_template_list(config_templates)
 
-    #入力
+    # 3次元の入力行列の初期化
     input_tensor = np.empty((0,frame_num,len(template_list)))
-
     
+    # 各テンプレートに対するカウントの初期化
     count_template = [0]*len(template_list)
-
     
-                
     #分割するフレーム数
     frame = frame_num
     flag = True
@@ -142,15 +132,16 @@ def tucker_input_matrix(config_templates, frame_num):
         # 各ネットワークコンフィグのテンプレートの頻度をinput_tensorに追加する.
         input_tensor = np.append(input_tensor,[temp], axis = 0)
 
-    return input_tensor
-    
+    return input_tensor   
 
-#コンフィグのグルーピングをする.
-def template_grouping(config_templates, n_comp, version ):
+# ネットワークコンフィグが属するブロックの候補を決定する (NMF)
+def template_grouping_NMF(config_templates, frame, n_comp):
 
-    #分割するフレーム数
-    frame_num = 15
-    X = create_input_matrix_ver1(config_templates, frame_num)
+    # 分割するフレーム数
+    frame_num = frame
+
+    # 
+    X = NMF_input_matrix(config_templates, frame_num)
 
     columns = X.columns.values
 
@@ -162,58 +153,27 @@ def template_grouping(config_templates, n_comp, version ):
     H = model.components_
     H = pd.DataFrame(H)
     H.columns = columns
-    
+
     return H
 
-#----------------------テストモジュール(データセットの取り込みとテンプレートの抽出)-----
-load_text = load_dataset()
-config_statement = process_dataset_ver2(load_text)
+# ネットワークコンフィグが属するブロックの候補を決定する (タッカー分解)
+def template_grouping_Tucker(config_templates, frame, n_comp, alpha, beta, ganma):
 
-config_template = extract_templates(config_statement)
+    input_tucker = tucker_input_matrix(config_templates, frame)
 
-count = 0
+    model = tucker(tensor = input_tucker, rank = [alpha, beta, ganma], random_state = 1)
 
-for i in config_template:
-    for word in i:
-        count = count + 1
+    array = model[1][2].tolist()
 
+    # テンプレートのリストの取得
+    template_list = get_template_list(config_templates)
 
-print(count)
+    # arrayをpandasに変換する
+    result = pd.DataFrame(array)
 
+    # 各行を対応するテンプレートのインデックス情報を付与する.
+    result.index = template_list
 
-#----------------------テストモジュール(NMFとTucker分解の実行)----------------------
+    return result
 
-# Tucker分解の入力テンソルの取得
-input_tucker = tucker_input_matrix(config_template, 5)
-
-# input_tuckerをTucker分解に適応する
-# パラメータは経験則に基づいて決めた.(後にパラメータのチューニングは考える)
-model = tucker(tensor = input_tucker, rank = [5,5,5],random_state = 1)
-
-# テンプレート次元方向の行列の取得
-pdDataFrame = model[1][2].tolist()
-
-# テンプレートのリストの取得
-template_list = get_template_list(config_template)
-
-# arrayをpandasに変換する
-result = pd.DataFrame(pdDataFrame)
-
-# 各行を対応するテンプレートのインデックス情報を付与する.
-result.index = template_list
-
-#特定のテンプレートだけ抽出したpandas
-result = result.loc[["interface *","ip address * *","router ospf *","router-id *","network * * area *","redistribute connected subnets", "router bgp *","bgp router-id *", "bgp log-neighbor-changes", "neighbor * peer-group", "neighbor * remote-as *", "neighbor * update-source Loopback0", "route-map * permit *", "match ip address *", "set metric *"],:]
-
-#Tucker分解の結果のcsvファイルの出力
-result.to_csv("Tucker_result_K=5_M=5_Frame_10122319.csv")
-
-# NMFにおけるテンプレート次元方向の行列の取得
-H = template_grouping(config_template, 5,1)
-
-#特定のテンプレートだけ抽出したpandas
-H = H.loc[:,["interface *","ip address * *","router ospf *","router-id *","network * * area *","redistribute connected subnets", "router bgp *","bgp router-id *", "bgp log-neighbor-changes", "neighbor * peer-group", "neighbor * remote-as *", "neighbor * update-source Loopback0", "route-map * permit *", "match ip address *", "set metric *"]]
-
-#NMFの結果のcsvファイルの出力
-H.to_csv('output_ver1_K=5_M=5_ver2.csv')
 
